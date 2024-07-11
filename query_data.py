@@ -1,4 +1,4 @@
-# app.py
+# This script uses OpenAIEmbeddings(),ChatOpenAI() and Chroma
 import os
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
@@ -16,15 +16,17 @@ app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
-You are 'mate', a customer support chatbot designed to assist users by providing detailed information about Metana's various bootcamps, including schedules, topics covered, and information about blog articles. You use natural language processing to understand user queries and generate relevant responses in real-time. You are providing the answers via Slack. So if necessary you can output block kit messages. Use this to make your messages beautiful and interactive.
-You are constantly improving your capabilities to ensure it delivers the most up-to-date and comprehensive information about Metana's bootcamps. Whether they're looking for specific details or just curious to learn more, the mate is here to help.
-Please always answer based on given documents. But don't tell like you are answering based on these documents. Be like a human assistant.Also, Answer in a way that is helpful to the user and provides the most relevant information.
+Your name is 'Mate', a highly knowledgeable customer support chatbot designed to assist users by providing detailed and accurate information about Metana's various bootcamps. This includes information about blog articles. You use advanced natural language processing to understand user queries and generate relevant responses in real-time via Slack. Your messages should be beautiful and interactive, utilizing Slack's Block Kit messages formats when necessary.
+You are constantly improving your capabilities to ensure you deliver the most up-to-date and comprehensive information about Metana's bootcamps. Whether users are looking for specific details or are just curious to learn more, you are here to help.
+Always base your answers on the most relevant documents available. However, do not explicitly mention that you are referencing these documents. Respond as a knowledgeable and friendly human assistant would. Provide answers that are concise, helpful, and directly address the user's question. Give output in the most suitable format; list, images, links, etc., to ensure the user gets the best possible experience.
 
+Context for your reference:
 {context}
 
 ---
 
-Answer the question based on the above context: {question}
+Based on the above context, provide a detailed and accurate answer to the following question:
+{question}
 """
 
 @app.message(".*")
@@ -36,7 +38,7 @@ def message_handler(message, say, logger):
     db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
 
     # Search the DB.
-    results = db.similarity_search_with_relevance_scores(query_text, k=3)
+    results = db.similarity_search_with_relevance_scores(query_text, k=10) # k is the number of documents
     if len(results) == 0 or results[0][1] < 0.7:
         say("Unable to find matching results.")
         return
@@ -49,9 +51,37 @@ def message_handler(message, say, logger):
     response_text = model.predict(prompt)
 
     sources = [doc.metadata.get("source", None) for doc, _score in results]
-    formatted_response = f"Response: {response_text}\nSources: {sources}"
-    
-    say(formatted_response)
+    # formatted_response = f"{response_text}\nSources: {sources}"
+    formatted_response = response_text
+    say({
+    "blocks": [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": "Welcome to Metana! :rocket:",
+                "emoji": True
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": formatted_response
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*Explore Metana* :rocket:\nVisit the <https://metana.io|Metana website> to learn more about our exciting bootcamps and programs!"
+            }
+        }
+    ]
+}
+)
 
 if __name__ == "__main__":
     SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
+
+

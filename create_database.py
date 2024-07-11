@@ -16,7 +16,7 @@ load_dotenv()
 openai.api_key = os.environ['OPENAI_API_KEY']
 
 CHROMA_PATH = "chroma"
-DATA_PATH = "data/blogs"
+DATA_PATH = "data/metana-posts"
 
 
 def main():
