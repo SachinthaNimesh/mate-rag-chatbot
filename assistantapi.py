@@ -118,16 +118,9 @@ def message_handler(message, say, logger):
     print(message)
 
     assistant_response = get_assistant_response(message["text"])
-    formatted_response = f"{assistant_response}"
+    formatted_response = assistant_response.replace("**", "*")
+    formatted_response = re.sub(r'### (.+)', r'*\1*', formatted_response)
     blocks = [
-        {
-            "type": "header",
-            "text": {
-                "type": "plain_text",
-                "text": "Welcome to Metana! :rocket:",
-                "emoji": True
-            }
-        },
         {
             "type": "section",
             "text": {
